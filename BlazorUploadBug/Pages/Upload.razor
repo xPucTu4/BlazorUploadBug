@@ -1,0 +1,74 @@
+﻿@page "/upload"
+@using System.IO
+
+<h1>Upload</h1>
+<p>
+    Unlike others that take your privacy seriously, we don't care about about that, so everything you send us will be discarded and nothing will be saved for any reason.
+</p>
+<div>
+    <p>Try with different sizes. With 1GB it should work. With 2-3GB it won't work. With bigger files, it should throw exceptions.</p>
+    <p>File: <InputFile OnChange="OnInputFileChange"></InputFile></p>
+    <p>Click here to see the magic: <input type="button" value="Gimme exceptions!" @onclick="UploadAsync"/></p>
+</div>
+<div> @* Debug log *@
+    <ul>
+        @foreach (string debugLine in DebugOutput)
+        {
+            <li>@debugLine</li>
+        }
+    </ul>
+    <p style="@clearButtonStyle"><input type="button" value="Clear log" @onclick="DebugOutput.Clear"/></p>
+</div>
+
+@code {
+    /// <summary>
+    /// The file that cannot be uploaded
+    /// </summary>
+    private IBrowserFile browserFile;
+
+    public List<string> DebugOutput = new List<string>();
+    
+    /// <summary>
+    /// This is used to show or hide the clear button
+    /// </summary>
+    private string clearButtonStyle => DebugOutput.Count == 0 ? "display: none" : "";
+
+    private async Task UploadAsync()
+    {
+        if (browserFile == null)
+        {
+            DebugOutput.Add("You must choose a file to be uploaded");
+            return;
+        }
+
+        long maxFileSize = 1024L; // 1KB
+        maxFileSize *= 1024L; // 1MB
+        maxFileSize *= 1024L; // 1GB
+        maxFileSize *= 1024L; // 1TB ???
+
+        DebugOutput.Add($"Starting upload with max file size of {maxFileSize} bytes.");
+        DebugOutput.Add($"Just to be sure, is that larger than our input file? {maxFileSize > browserFile.Size}");
+
+        int totalReaded = 0;
+        byte[] buffer = new byte[8];
+        Stream stream;
+        try
+        {
+            stream = browserFile.OpenReadStream(maxFileSize);
+            totalReaded = await stream.ReadAsync(buffer, 0, buffer.Length);
+        }
+        catch (Exception any)
+        {
+            DebugOutput.Add($"Exception! Error message: {any.Message}");
+        }
+        DebugOutput.Add($"We readed {totalReaded} bytes.");
+        DebugOutput.Add($"The first {buffer.Length} bytes are: {BitConverter.ToString(buffer)}.");
+
+    }
+
+    private async Task OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        browserFile = e.File;
+        DebugOutput.Add($"Our file is {e.File.Size} bytes long.");
+    }
+}
